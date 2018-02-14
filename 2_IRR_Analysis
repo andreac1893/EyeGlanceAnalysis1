@@ -1,0 +1,42 @@
+# load libraries
+library(dplyr)
+library(tidyr)
+library(readr)
+library(ggplot2)
+
+# read in relevant datasets
+combvgtdata <- read_csv("combvgtdata.csv") 
+
+recodedgtdata <- read_csv("recodedgtdata.csv")
+
+
+# Join original data with the recoded data, keeping only the rows where there is a match between the ----
+# original dataset and the recoded dataset
+IRR_data_task <- combvgtdata %>% select("sub", "make", "Condition", "TaskNum", "TotalTaskTime") %>%
+  filter(!is.na(TotalTaskTime)) %>%
+  inner_join(filter(select(recodedgtdata, "sub", "make", "Condition", "TaskNum", "TotalTaskTime"), !is.na(TotalTaskTime)), 
+             by = c("sub", "make", "Condition", "TaskNum")) 
+
+IRR_data_glance <- combvgtdata %>% select("sub", "make", "Condition", "TaskNum", "GlanceTime", "GlanceNum") %>%
+  inner_join(select(recodedgtdata, "sub", "make", "Condition", "TaskNum", "GlanceTime", "GlanceNum"), 
+             by = c("sub", "make", "Condition", "TaskNum", "GlanceNum")) %>%
+  # Different raters either left cells blank or typed zeros when there were no glances. Blank cells were parsed to NA's but 
+  # the following changes NAs to zeros
+  mutate(GlanceTime.x = ifelse(is.na(GlanceTime.x), 0, GlanceTime.x),
+         GlanceTime.y = ifelse(is.na(GlanceTime.y), 0, GlanceTime.y)) %>%
+  # upon visual inspection, there was a huge outlier glance that was > 200000 milliseconds, which threw off the pearson R
+  filter(GlanceTime.y < 200000)
+
+
+#Run Pearson R correlation 
+cor.test(IRR_data_task$TotalTaskTime.x, IRR_data_task$TotalTaskTime.y)
+ggplot(IRR_data_task, aes(x = TotalTaskTime.x, y = TotalTaskTime.y)) + geom_point() 
+
+
+cor.test(IRR_data_glance$GlanceTime.x, IRR_data_glance$GlanceTime.y)
+ggplot(IRR_data_glance, aes(x = GlanceTime.x, y = GlanceTime.y)) + geom_point() 
+
+
+
+
+
