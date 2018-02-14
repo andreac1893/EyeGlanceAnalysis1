@@ -1,0 +1,164 @@
+library(forcats)
+library(agricolae)
+library(dplyr)
+library(ggplot2)
+
+
+##Video Coding Exploration----
+
+combvgtdata <- read_csv("combvgtdata.csv") %>%
+  mutate(Condition = fct_recode(Condition, CS = "M", CS = "TS"))
+
+
+gt_tt_measures <- combvgtdata %>%
+  group_by(sub, make, model, trim, Condition, TaskNum) %>%
+  # calculate Glance Frequency per task
+  mutate(TotalTaskTime_sec = TotalTaskTime / 1000) %>%
+  mutate(GlanceFrequency = n()/TotalTaskTime_sec) %>%
+  # calculate EOR % per task
+  mutate(TaskGlanceTime = sum(GlanceTime)) %>%
+  mutate(EOR = TaskGlanceTime/TotalTaskTime)
+
+write_csv(gt_tt_measures, "gt_tt_measures.csv")
+
+
+
+##Total Task Time PLOT----
+
+combvgtdata %>%
+  group_by(Condition) %>%
+  summarise(mean_TTT = mean(TotalTaskTime , na.rm = TRUE), n = n()) %>%
+  ggplot(mapping = aes(x = Condition, y = mean_TTT)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(name = "Total Task Time")
+
+CS_ttt<- combvgtdata %>%
+  filter(Condition == "CS",!is.na(TotalTaskTime)) %>%
+  select(1:6, TotalTaskTime)
+
+SW_ttt<- combvgtdata %>%
+  filter(Condition == "SW",!is.na(TotalTaskTime)) %>%
+  select(1:6, TotalTaskTime)
+
+V_ttt<- combvgtdata %>%
+  filter(Condition == "V",!is.na(TotalTaskTime)) %>%
+  select(1:6, TotalTaskTime)
+
+ttt_data<- combvgtdata %>%
+  filter(TotalTaskTime < 1000000, !is.na(TotalTaskTime))
+
+ttt_anv<- aov(TotalTaskTime ~ Condition, ttt_data)
+
+summary(ttt_anv)
+
+ttt_posthoc<- TukeyHSD(x = ttt_anv)
+
+plot(ttt_anv)
+
+ttt_tukey.test <- HSD.test(ttt_anv, trt = "Condition")
+
+ttt_tukey.test
+
+# Mean GT by Condition----
+combvgtdata %>%
+  group_by(Condition) %>%
+  summarise(mean_GT = mean(GlanceTime, na.rm = T), n = n()) %>%
+  ggplot(mapping = aes(x = Condition, y = mean_GT)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(name = "Glance Time")
+
+
+gt_data<- combvgtdata %>%
+  filter(!is.na(GlanceTime))
+
+gt_anv<- aov(GlanceTime ~ Condition, gt_data)
+
+summary(gt_anv)
+
+gt_posthoc<- TukeyHSD(x = gt_anv)
+
+plot(gt_anv)
+
+gt_tukey.test <- HSD.test(gt_anv, trt = "Condition")
+
+
+gt_tukey.test
+
+##We need to remove that one data point again.. weird result
+
+
+# Mean EOR by Condition----
+combvgtdata %>%
+  group_by(sub, make, model, trim, Condition, TaskNum) %>%
+  mutate(TaskGlanceTime = sum(GlanceTime)) %>%
+  filter(!is.na(TotalTaskTime)) %>%
+  mutate(EOR = TaskGlanceTime/TotalTaskTime) %>% 
+  filter(EOR <= 1) %>%
+  group_by(Condition) %>%
+  summarise(mean_EOR = mean(EOR), n = n()) %>%
+  ggplot(mapping = aes(x = Condition, y = mean_EOR)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(name = "Mean EOR %")
+
+EOR_data<- combvgtdata %>%
+  group_by(sub, make, model, trim, Condition, TaskNum) %>%
+  mutate(TaskGlanceTime = sum(GlanceTime)) %>%
+  filter(!is.na(TotalTaskTime)) %>%
+  mutate(EOR = TaskGlanceTime/TotalTaskTime)
+  
+EOR_anv<- aov(EOR ~ Condition, EOR_data)
+
+summary(EOR_anv)
+
+EOR_posthoc<- TukeyHSD(x = EOR_anv)
+
+plot(EOR_anv)
+
+EOR_tukey.test <- HSD.test(EOR_anv, trt = "Condition")
+
+EOR_tukey.test
+
+##Boxplot of EOR by cond----
+
+EOR_data%>%
+  ggplot(mapping = aes(x = Condition, y = EOR))+
+  geom_boxplot()
+
+
+
+
+
+
+# Mean GF by Condition----
+
+combvgtdata %>% 
+  group_by(sub, make, model, trim, Condition, TaskNum) %>%
+  mutate(TotalTaskTime_sec = TotalTaskTime / 1000) %>%
+  mutate(GlanceFrequency = n()/TotalTaskTime_sec) %>%
+  filter(!is.na(TotalTaskTime)) %>%
+  group_by(Condition) %>%
+  summarise(mean_GlanceFrequency = mean(GlanceFrequency), n = n()) %>%
+  ggplot(mapping = aes(x = Condition, y = mean_GlanceFrequency)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(name = "Mean Glances per Second")  
+
+GF_data<- combvgtdata %>% 
+  group_by(sub, make, model, trim, Condition, TaskNum) %>%
+  mutate(TotalTaskTime_sec = TotalTaskTime / 1000) %>%
+  mutate(GlanceFrequency = n()/TotalTaskTime_sec) %>%
+  filter(!is.na(TotalTaskTime))
+
+
+GF_anv<- aov(GlanceFrequency ~ Condition, GF_data)
+
+summary(GF_anv)
+
+GF_posthoc<- TukeyHSD(x = GF_anv)
+
+plot(GF_anv)
+
+GF_tukey.test <- HSD.test(GF_anv, trt = "Condition")
+
+GF_tukey.test
+
+
