@@ -1,0 +1,47 @@
+library(readr)
+library(dplyr)
+
+# read in and prep relevant datasets----
+gt_tt_measures <- read_csv("gt_tt_measures.csv") %>%
+  mutate(sub = factor(as.numeric(sub)), 
+         make = factor(make), 
+         model = factor(model), 
+         trim = factor(trim),
+         Condition = factor(Condition)) %>%
+  group_by(sub, make, model,trim, Condition) %>%
+  summarise(mean_GT = mean(GlanceTime, na.rm = T),
+         mean_TTT = mean(TotalTaskTime, na.rm = T), 
+         mean_GF = mean(GlanceFrequency, na.rm = T), 
+         mean_EOR = mean(EOR, na.rm = T)) %>%
+  select(sub, make,model,trim, Condition, mean_GT, mean_TTT, mean_GF, mean_EOR)
+  
+
+# Master Dataframe ----
+# this joins together our video coded glance time data, video coded task time data, and our DRT
+# hit rate data 
+tt_gd_hr <- hit_rate %>%
+  full_join(gt_tt_measures)
+
+write_csv(tt_gd_hr, "tt_gd_hr.csv")
+
+
+# 1. Video coding information?----
+# mean task duration differs between conditions (ANOVA)
+# mean glance time differs between conditions (ANOVA)
+# how much does eyes off road differ between conditions (ANOVA)
+# number of glances per unit time between conditions (ANOVA)
+
+# 2. DRT information?----
+# create a model to see what is driving hit rate? 
+# (is it glance time, eyes off road, or frequency?)
+# this tells us A: is RDRT a good surrogate measure of eyeglances? 
+# B: what aspects of glance behavior does it measure?
+
+# 3. How is hit rate associated with glance time? (collapse across conditions??) ----
+# a. generate a sweet scatterplot
+# b. is there an appropriate analysis for this?
+
+
+
+
+
