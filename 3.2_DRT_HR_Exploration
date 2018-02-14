@@ -1,0 +1,81 @@
+ ##DRT 
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(forcats)
+
+##1) HR Exploration: Condition @ Vehicle Level----
+
+# hit rate data (from Joel)
+
+hit_rate <- read_csv("hit_rate_for_EGV_paper.csv") %>%
+  mutate(sub = factor(as.numeric(sub)), 
+         make = factor(make), 
+         model = factor(model), 
+         trim = factor(trim),
+         Condition = factor(mod)) %>%
+  mutate(Condition = fct_recode(Condition, CS = "M", CS = "TS")) %>%
+  select(sub, make, model, trim, Condition, everything()) %>%
+  select(-vehID, -mod)
+
+##RUn a T- test to see if HR in M cond. is sig dif than HR in TS
+
+mandata<- hit_rate %>%
+  filter(Condition == "M")
+
+touchdata<- hit_rate %>%
+  filter(Condition == "TS")
+
+t.test(touchdata$hit_rate, mandata$hit_rate)
+
+##We can officially make them the same!!
+
+## Combine M & TS to make CS ----
+
+hit_rate<- hit_rate %>%
+  mutate(Condition = fct_recode(Condition, CS = "M", CS = "TS"))
+
+hit_rate_veh <- hit_rate %>%
+  group_by(Condition, make) %>%
+  summarise(veh_mean_hr = mean(hit_rate), mean_n = n())
+
+hit_rate_veh %>% 
+  ggplot(mapping = aes(x = make, y = veh_mean_hr)) + 
+  geom_bar(mapping = aes(fill = make), stat = "identity") +
+  facet_grid(Condition ~., scales = "free", space = "free")
+  
+#2) HR Exploration: Condition only----
+##Hit rate Data 
+  
+hit_rate %>%
+  group_by(Condition) %>%
+  summarise(mean_hr = mean(hit_rate, na.rm = T),
+            sd_hr = sd(hit_rate, na.rm = T),
+            n_hr = n(),
+            SE_hr = sd(hit_rate, na.rm = T)/sqrt(n())) %>%
+  mutate(lower.ci.hr = mean_hr - qt(1 - (0.05 / 2), n_hr - 1) * SE_hr,
+         upper.ci.hr = mean_hr + qt(1 - (0.05 / 2), n_hr - 1) * SE_hr) %>%
+  ggplot(mapping = aes(x = Condition, y = mean_hr)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = mean_hr - SE_hr, ymax = mean_hr + SE_hr), width = 0.2, color = "black") +
+  scale_y_continuous(name = "Hit Rate")
+  
+#HR Rate Tests----
+
+
+hit_rate_data <- hit_rate
+
+hr_rate_anv<- aov( hit_rate ~ Condition, hit_rate_data)
+
+summary(hr_rate_anv)
+
+hr_rate_posthoc<- TukeyHSD(x = hr_rate_anv)
+
+plot(hr_rate_anv)
+
+hr_rate_tukey.test <- HSD.test(hr_rate_anv, trt = "Condition")
+
+hr_rate_tukey.test
+
+
+  
