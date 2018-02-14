@@ -1,0 +1,95 @@
+library(readr)
+library(ggplot2)
+library(dplyr)
+
+
+tt_gd_hr <- read_csv("tt_gd_hr.csv")
+
+# number of participants that we have hit_rate and video coding data for in each vehicle
+n_df <- tt_gd_hr %>% 
+  group_by(make) %>%
+  mutate(n_hr = n_distinct(sub)) %>%
+  filter(!is.na(mean_GT)) %>%
+  mutate(n_vid = n_distinct(sub)) %>% 
+  summarise(n_hr = mean(n_hr),
+            n_videos = mean(n_vid))
+
+tt_gd_hr %>%
+  ggplot(mapping = aes(x = hit_rate)) +
+  geom_histogram()
+
+tt_gd_hr %>%
+  filter(!is.na(mean_GT)) %>%
+  ggplot(mapping = aes(x = mean_EOR)) +
+  geom_histogram()
+  
+tt_gd_hr %>%
+  filter(!is.na(mean_GT)) %>%
+  ggplot(mapping = aes(x = mean_GT)) +
+  geom_histogram()
+
+tt_gd_hr %>%
+  filter(!is.na(mean_GT)) %>%
+  ggplot(mapping = aes(x = mean_GF)) +
+  geom_histogram() 
+
+##Multiple Regression----
+
+regression<- tt_gd_hr %>%
+  filter(!is.na(mean_GT), !is.na(hit_rate), !is.nan(mean_TTT))
+
+
+Conditions <- unique(regression_df$Condition)
+# Correlation Matrices to test for collinearity
+for (item in Conditions){
+  cor <- regression_df %>%
+    filter(Condition == item) %>%
+    select(contains("mean_")) %>%
+    cor()
+  print(item)
+  print(cor(df))
+} 
+
+# Runs Linear Regression on all 3 conditions
+for (item in Conditions){
+  df <- lm(hit_rate ~ mean_GT  + mean_GF + mean_EOR, data = regression_df[regression_df$Condition == item,])
+  print(summary(df))
+}
+
+lm(formula = hit_rate ~ mean_GT + mean_GF + mean_EOR,
+   data = regression[regression$Condition == "CS",]) %>%
+  summary()
+
+lm(formula = hit_rate ~ mean_GT + mean_GF + mean_EOR,
+   data = regression[regression$Condition == "SW",]) %>%
+  summary()
+lm(formula = hit_rate ~ mean_GT + mean_GF + mean_EOR,
+   data = regression[regression$Condition == "V",]) %>%
+  summary()
+
+
+
+
+
+
+
+
+step(lm(formula = hit_rate ~ mean_GT + mean_GF + mean_EOR,
+        data = regression[regression$Condition == "V",]),direction="both")
+
+
+regression %>%
+  filter(Condition == "V")%>%
+  select(contains("mean"))%>%
+  cor()
+
+regression %>%
+  filter(Condition == "CS")%>%
+  select(contains("mean"))%>%
+  cor()
+
+regression %>%
+  filter(Condition == "SW")%>%
+  select(contains("mean"))%>%
+  cor()
+
